@@ -56,7 +56,9 @@ all_sci = []
 for file in all_files:
     ad = astrodata.open(file)
     print(file, ad.tags) #TO DO. Print more useful information here? Exp time, coadds, filter, etc?
-    if "DARK" in ad.tags:
+    if "PREPARED" in ad.tags:
+        print("Processed file. Skipped.")
+    elif "DARK" in ad.tags:
         all_dark += [ [file, [ad.phu['EXPTIME'], ad.phu['COADDS']]] ]
         print("This is DARK.")
     elif "FLAT" in ad.tags:
