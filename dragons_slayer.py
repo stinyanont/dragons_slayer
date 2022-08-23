@@ -73,6 +73,15 @@ for file in all_files:
 #Deal with DARKS: 
 #Unique sets of exp_time coadd combo
 dark_exp_times =[list(x) for x in set(tuple(x) for x in np.array(all_dark, dtype = 'object')[:,1])]
+print("###########################################")
+print("##########DARKS AVAILABLE:#################")
+print("###########################################")
+for i in dark_exp_times:
+    print("Exp time: %.3f s, %d coadds"%(i[0], i[1]))
+print("###########################################")
+min_dark_ind = np.argmin(np.array(dark_exp_times)[:,0]*np.array(dark_exp_times)[:,1]) #exp_time * coadds
+print(min_dark_ind, dark_exp_times[min_dark_ind])
+
 #create a list of lists with the same length as unique exp times.
 #each element is a list of files with that unique exp time. 
 dark_list_unique_time = [[] for x in range(len(dark_exp_times))]
@@ -82,6 +91,12 @@ for dark in all_dark:
 
 #Deal with FLATS:
 flat_filters = list(set(np.array(all_flat, dtype = 'object')[:,1]))
+print("###########################################")
+print("##########FLATS AVAILABLE:#################")
+print("###########################################")
+for i in flat_filters:
+    print("Filter: %d"%(i))
+print("###########################################")
 #create a list of lists to group flats with different filters.
 flat_list_unique_filter = [[] for x in range(len(flat_filters))]
 for flat in all_flat:
@@ -90,6 +105,12 @@ for flat in all_flat:
 
 #Deal with Science:
 science_objects_filters = [list(x) for x in set(tuple(x) for x in np.array(all_sci, dtype = 'object')[:,1])]
+print("###########################################")
+print("########SCI TARGETS AVAILABLE:#############")
+print("###########################################")
+for i in science_objects_filters:
+    print("Object: %d, Filter: %d"%(i[0],i[1]))
+print("###########################################")
 #create a list of lists to group science with different filters.
 sci_list_unique_obj_filter = [[] for x in range(len(science_objects_filters))]
 for science in all_sci:
@@ -116,7 +137,7 @@ for ind, dark_group in enumerate(dark_list_unique_time):
 #Make a new bad pixel map, temporary. Fix this.
 reduce_bpm = Reduce()
 reduce_bpm.files.extend(flat_list_unique_filter[0])
-reduce_bpm.files.extend(dark_list_unique_time[2]) #hard code. Should use dark with min time. 
+reduce_bpm.files.extend(dark_list_unique_time[min_dark_ind]) #Using dark with min time. 
 reduce_bpm.recipename = 'makeProcessedBPM'
 reduce_bpm.runr()
 
