@@ -1,6 +1,6 @@
 #Primarily copied from https://dragons.readthedocs.io/_/downloads/niriimg-drtutorial/en/stable/pdf/
 import glob, os
-import numpy as np
+import numpy as np, pdb
 
 #Import DRAGONS.
 try:
@@ -13,6 +13,7 @@ except:
     print("Run this from the dragons environment or check your dragons installation.")
     exit()
 
+########TO DO. Add a flag to skip redoing the calibrations. 
 
 #Setup a logger
 from gempy.utils import logutils
@@ -55,9 +56,12 @@ all_sci = []
 #Loop through, organize files into different lists. 
 for file in all_files:
     ad = astrodata.open(file)
-    print(file, ad.tags) #TO DO. Print more useful information here? Exp time, coadds, filter, etc?
+    # pdb.set_trace()
+    print(file, ad.tags, ad.exposure_time(), ad.coadds(), ad.filter_name(), ad.well_depth_setting()) #TO DO. Print more useful information here? Exp time, coadds, filter, etc?
     if "PREPARED" in ad.tags:
         print("Processed file. Skipped.")
+    elif ad.well_depth_setting() == "Deep":
+        print("Deep well images. Somehow?")
     elif "DARK" in ad.tags:
         all_dark += [ [file, [ad.phu['EXPTIME'], ad.phu['COADDS']]] ]
         print("This is DARK.")
@@ -65,7 +69,7 @@ for file in all_files:
         all_flat +=[ [file, ad.filter_name()] ]
         print("This is FLAT.")
     elif "IMAGE" in ad.tags and "ACQUISITION" not in ad.tags: #FLATS won't be in here.
-        all_sci +=[ [file, [ad.object(), ad.filter_name()]] ]
+        all_sci +=[ [file, [ad.object(), ad.filter_name()], [ad.phu["POFFSET"], ad.phu["QOFFSET"]]] ]
         print("This is SCIENCE.")
     elif "IMAGE" in ad.tags and "ACQUISITION" in ad.tags: #Acquisition images. Ignore them. 
         print("This is an ACQUISITION image. Ignore.")    
@@ -75,12 +79,7 @@ for file in all_files:
 #Deal with DARKS: 
 #Unique sets of exp_time coadd combo
 dark_exp_times =[list(x) for x in set(tuple(x) for x in np.array(all_dark, dtype = 'object')[:,1])]
-print("###########################################")
-print("##########DARKS AVAILABLE:#################")
-print("###########################################")
-for i in dark_exp_times:
-    print("Exp time: %.3f s, %d coadds"%(i[0], i[1]))
-print("###########################################")
+
 min_dark_ind = np.argmin(np.array(dark_exp_times)[:,0]*np.array(dark_exp_times)[:,1]) #exp_time * coadds
 print(min_dark_ind, dark_exp_times[min_dark_ind])
 
@@ -91,33 +90,58 @@ for dark in all_dark:
     idx = dark_exp_times.index(dark[1])
     dark_list_unique_time[idx].append(dark[0])
 
+print("###########################################")
+print("##########DARKS AVAILABLE:#################")
+print("###########################################")
+for idx, i in enumerate(dark_exp_times):
+    print("Exp time: %.3f s, %d coadds"%(i[0], i[1]))
+    print(dark_list_unique_time[idx])
+    # fn = 'dark_%.3f_%d.lis'%(i[0], i[1])
+
+print("###########################################")
+
+
 #Deal with FLATS:
 flat_filters = list(set(np.array(all_flat, dtype = 'object')[:,1]))
-print("###########################################")
-print("##########FLATS AVAILABLE:#################")
-print("###########################################")
-for i in flat_filters:
-    print("Filter: %d"%(i))
-print("###########################################")
 #create a list of lists to group flats with different filters.
 flat_list_unique_filter = [[] for x in range(len(flat_filters))]
 for flat in all_flat:
     idx = flat_filters.index(flat[1])
     flat_list_unique_filter[idx].append(flat[0])
+# print(flat_list_unique_filter)
+
+print("###########################################")
+print("##########FLATS AVAILABLE:#################")
+print("###########################################")
+for idx, i in enumerate(flat_filters):
+    print("Filter: %s"%(i))
+    print(flat_list_unique_filter[idx])
+print("###########################################")
 
 #Deal with Science:
+# all_sci = np.array(all_sci)
+# ignore_band = 'Kshort_G0205'
+# all_sci = all_sci[all_sci[:,1]!=ignore_band]
+
 science_objects_filters = [list(x) for x in set(tuple(x) for x in np.array(all_sci, dtype = 'object')[:,1])]
-print("###########################################")
-print("########SCI TARGETS AVAILABLE:#############")
-print("###########################################")
-for i in science_objects_filters:
-    print("Object: %d, Filter: %d"%(i[0],i[1]))
-print("###########################################")
+
 #create a list of lists to group science with different filters.
 sci_list_unique_obj_filter = [[] for x in range(len(science_objects_filters))]
 for science in all_sci:
     idx = science_objects_filters.index(science[1])
     sci_list_unique_obj_filter[idx].append(science[0])
+
+
+print("###########################################")
+print("########SCI TARGETS AVAILABLE:#############")
+print("###########################################")
+for idx, i in enumerate(science_objects_filters):
+    print("Object: %s, Filter: %s"%(i[0],i[1]))
+    print(sci_list_unique_obj_filter[idx])
+print(science_objects_filters)
+print("###########################################")
+
+
 
 #Save some numpy objects
 # np.save('dark_fn.npy', dark_list_unique_time)
@@ -162,6 +186,8 @@ for ind, science_group in enumerate(sci_list_unique_obj_filter):
     reduce_target.files.extend(science_group)
     reduce_target.uparms = [('addDQ:user_bpm', bpm)]
     # reduce_target.uparms.append(('skyCorrect:scale_sky', False))
+    if (astrodata.open(science_group[0])).object() == 'SN2022jzc' or (astrodata.open(science_group[0])).object() == 'SN2022oey':
+        reduce_target.uparms.append(('skyCorrect:nlow', 0)) #######################HARD CODE. CHANGE THIS. OR FIX SOURCE CODE. 
     reduce_target.runr()
 
 
