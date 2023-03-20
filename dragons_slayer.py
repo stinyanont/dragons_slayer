@@ -9,6 +9,8 @@ try:
     from recipe_system.reduction.coreReduce import Reduce
     from recipe_system import cal_service
     from gempy.adlibrary import dataselect
+    # from geminidr.f2.recipes.sq import recipes_FLAT_IMAGE
+    import geminidr
 except:
     print("Run this from the dragons environment or check your dragons installation.")
     exit()
@@ -101,7 +103,7 @@ for idx, i in enumerate(dark_exp_times):
 print("###########################################")
 
 
-#Deal with FLATS:
+#Deal with DOME FLATS:
 flat_filters = list(set(np.array(all_flat, dtype = 'object')[:,1]))
 #create a list of lists to group flats with different filters.
 flat_list_unique_filter = [[] for x in range(len(flat_filters))]
@@ -171,13 +173,25 @@ bpm = reduce_bpm.output_filenames[0]
 
 #Run flat calibrations
 for ind, flat_group in enumerate(flat_list_unique_filter):
-    print("Processing Flats with filter: ", flat_filters[ind])
-    reduce_flats = Reduce()
-    reduce_flats.files.extend(flat_group)
-    reduce_flats.uparms = [('addDQ:user_bpm', bpm)]
-    reduce_flats.runr()
+    if 'K' in flat_filters[ind]:
+        print("Processing Flats with filter: . USE SKY FLAT HERE.", flat_filters[ind])
+        reduce_sky_flats = Reduce()
+        # print(reduce_sky_flats.recipename)
+        # reduce_sky_flats.recipename = recipes_FLAT_IMAGE.makeProcessedFlat
+        reduce_sky_flats.recipename = "makeSkyFlat"
+        reduce_sky_flats.files.extend(sci_list_unique_obj_filter[ind])
+        # reduce_sky_flats.uparms = [('addDQ:user_bpm', bpm)]
+        reduce_sky_flats.runr()
 
-    caldb.add_cal(reduce_flats.output_filenames[0])
+        caldb.add_cal(reduce_sky_flats.output_filenames[0])
+    else:
+        print("Processing Flats with filter: ", flat_filters[ind])
+        reduce_flats = Reduce()
+        reduce_flats.files.extend(flat_group)
+        # reduce_flats.uparms = [('addDQ:user_bpm', bpm)]
+        reduce_flats.runr()
+
+        caldb.add_cal(reduce_flats.output_filenames[0])
 
 #Run science calibrations
 for ind, science_group in enumerate(sci_list_unique_obj_filter):
