@@ -1,5 +1,5 @@
 #Primarily copied from https://dragons.readthedocs.io/_/downloads/niriimg-drtutorial/en/stable/pdf/
-import glob, os
+import glob, os, argparse
 import numpy as np, pdb
 
 #Import DRAGONS.
@@ -15,6 +15,23 @@ except:
     print("Run this from the dragons environment or check your dragons installation.")
     exit()
 
+########arguments
+parser = argparse.ArgumentParser(description=\
+        '''
+        Run DRAGONS on the current raw directory
+        
+        Usage: python dragons_slayer.py 
+            
+        ''', formatter_class=argparse.RawTextHelpFormatter)
+
+# parser = argparse.ArgumentParser()
+parser.add_argument("--kskyflat", action="store_true",
+                    help="Use sky flat in K band")
+args = parser.parse_args()
+K_sky_flat = args.kskyflat
+# print(K_sky_flat)
+
+
 ########TO DO. Add a flag to skip redoing the calibrations. 
 
 #Setup a logger
@@ -22,7 +39,8 @@ from gempy.utils import logutils
 logutils.config(file_name='dragons.log')
 
 #Setup the path for the Local Calibration Manager to the current path
-f = open('/Users/kaew/.geminidr/rsys.cfg', 'w')
+file_dir = os.path.expanduser('~/.geminidr/rsys.cfg')
+f = open(file_dir, 'w')
 f.write('[calibs]\nstandalone = True\ndatabase_dir = %s/'%(os.getcwdb().decode('utf-8')))
 f.close()
 
@@ -173,7 +191,7 @@ bpm = reduce_bpm.output_filenames[0]
 
 #Run flat calibrations
 for ind, flat_group in enumerate(flat_list_unique_filter):
-    if 'K' in flat_filters[ind]:
+    if ('K' in flat_filters[ind]) and K_sky_flat:
         print("Processing Flats with filter: . USE SKY FLAT HERE.", flat_filters[ind])
         reduce_sky_flats = Reduce()
         # print(reduce_sky_flats.recipename)
